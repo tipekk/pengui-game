@@ -4,7 +4,14 @@
     --btn-primary: #00bcd4;
     --btn-hover: #00acc1;
     --btn-shadow: #00838f;
+    /* Responsive entity sizes */
+    --penguin-size: clamp(50px, 8vmin, 90px);
+    --fish-size: clamp(40px, 7vmin, 70px);
+    --snowball-size: clamp(45px, 8vmin, 80px);
 }
+
+/* ---- RESET & BASE ---- */
+*, *::before, *::after { box-sizing: border-box; }
 
 body, html {
     margin: 0; padding: 0;
@@ -14,6 +21,8 @@ body, html {
     color: var(--text-primary);
     user-select: none;
     -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
     background-color: var(--bg-ice);
 }
 
@@ -25,11 +34,10 @@ body, html {
 /* --- ENVIRONMENT BACKGROUNDS --- */
 #bg-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: #4fc3f7; /* Ľadová voda */
+    background-color: #4fc3f7;
     z-index: 0;
     transition: background-color 1.5s ease-in-out;
 }
-
 .ice-floe {
     position: absolute;
     background: #ffffff;
@@ -39,22 +47,22 @@ body, html {
 }
 .flex-1 { width: 50vw; height: 40vh; top: -10vh; left: -10vw; border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
 .flex-2 { width: 60vw; height: 50vh; bottom: -15vh; right: -10vw; border-radius: 60% 40% 30% 70% / 50% 40% 50% 60%; }
-.flex-3 { width: 25vw; height: 25vh; top: 20vh; right: 10vw; border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; animation: drift floe 10s infinite alternate; }
+.flex-3 { width: 25vw; height: 25vh; top: 20vh; right: 10vw; border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
 .flex-4 { width: 30vw; height: 20vh; bottom: 20vh; left: 5vw; border-radius: 70% 30% 30% 70% / 50% 50% 50% 50%; }
 
 /* --- ZOMBIE THEME --- */
 .zombie-gear { display: none; }
 
 body.zombie-theme #bg-layer {
-    background-color: #1a252c; /* Temná toxická voda */
+    background-color: #1a252c;
 }
 body.zombie-theme .ice-floe {
-    background: #2c3e50; /* Temný, ošarpaný ľad / skaly */
+    background: #2c3e50;
     box-shadow: inset -10px -20px 30px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.4);
-    filter: sepia(0.3) saturate(1.5) hue-rotate(60deg) brightness(0.6); /* Toxický nádych */
+    filter: sepia(0.3) saturate(1.5) hue-rotate(60deg) brightness(0.6);
 }
 body.zombie-theme .zombie-gear {
-    display: block; /* Tučniaci nasadia špeci výbavu! */
+    display: block;
 }
 
 /* --- SCREENS --- */
@@ -70,101 +78,116 @@ body.zombie-theme .zombie-gear {
 }
 .screen.active { display: flex; }
 
-/* Interactive Menus */
 #main-menu, #game-over-screen {
     background: rgba(224,247,250,0.4);
     backdrop-filter: blur(10px);
 }
 
+/* --- MENU CONTENT --- */
 .menu-content, .game-over-content {
-    background: rgba(255, 255, 255, 0.85);
-    padding: 40px;
+    background: rgba(255, 255, 255, 0.88);
+    padding: clamp(20px, 4vw, 40px);
     border-radius: 30px;
     box-shadow: 0 10px 30px rgba(0, 100, 150, 0.15);
     border: 3px solid rgba(255,255,255,1);
-    transform: translateY(0);
     animation: floatMenu 4s ease-in-out infinite alternate;
+    width: clamp(280px, 85vw, 480px);
+    max-height: 95vh;
+    overflow-y: auto;
 }
-
 @keyframes floatMenu {
     0% { transform: translateY(-5px); }
     100% { transform: translateY(5px); }
 }
 
 .hero-svg {
-    width: 150px;
-    height: 150px;
+    width: clamp(80px, 20vmin, 150px);
+    height: clamp(80px, 20vmin, 150px);
     animation: bounce 1s infinite alternate;
 }
 
 h1, h2 {
     font-weight: 900; text-transform: uppercase;
     text-shadow: 2px 2px 0px white;
-    margin-bottom: 20px; color: #00838f;
+    margin-bottom: 15px; color: #00838f;
 }
-h1 { font-size: 3.5rem; line-height: 1.1; margin-top: 10px; }
-h2 { font-size: 3rem; }
+h1 { font-size: clamp(1.6rem, 5vw, 3.5rem); line-height: 1.1; margin-top: 8px; }
+h2 { font-size: clamp(1.4rem, 4vw, 3rem); }
 
 .menu-content p {
-    font-size: 1.3rem; font-weight: 700; margin-bottom: 30px;
+    font-size: clamp(0.85rem, 2.5vw, 1.3rem);
+    font-weight: 700; margin-bottom: 20px;
 }
 
 /* Stats Box */
 .stats-box {
-    text-align: left; background: #e0f7fa; padding: 20px;
-    border-radius: 15px; margin-bottom: 30px;
+    text-align: left; background: #e0f7fa; padding: 15px;
+    border-radius: 15px; margin-bottom: 20px;
 }
 .stat-item {
     display: flex; justify-content: space-between;
-    font-size: 1.2rem; margin: 10px 0; border-bottom: 2px dashed #b2ebf2; padding-bottom: 5px;
+    font-size: clamp(0.85rem, 2.2vw, 1.2rem);
+    margin: 8px 0; border-bottom: 2px dashed #b2ebf2; padding-bottom: 4px;
 }
 .stat-item.highlight {
-    font-size: 1.5rem; color: #ff9800; border-bottom: none; font-weight: 900; margin-top: 20px;
+    font-size: clamp(1rem, 2.8vw, 1.5rem);
+    color: #ff9800; border-bottom: none; font-weight: 900; margin-top: 15px;
 }
 .strong { font-weight: 900; color: #00838f; }
 
+/* --- BUTTONS --- */
 button {
     background-color: var(--btn-primary); color: white; border: none;
-    padding: 15px 40px; font-size: 1.8rem; font-weight: 900;
+    padding: clamp(10px, 2vw, 15px) clamp(20px, 4vw, 40px);
+    font-size: clamp(1rem, 3vw, 1.8rem);
+    font-weight: 900;
     font-family: 'Nunito', sans-serif; border-radius: 50px;
     cursor: pointer;
-    box-shadow: 0 8px 0 var(--btn-shadow), 0 15px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 0 var(--btn-shadow), 0 12px 15px rgba(0,0,0,0.1);
     transition: all 0.15s; text-transform: uppercase;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
-button:hover {
+button:hover, button:focus {
     background-color: var(--btn-hover);
     transform: translateY(2px);
-    box-shadow: 0 6px 0 var(--btn-shadow), 0 10px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 0 var(--btn-shadow), 0 8px 10px rgba(0,0,0,0.1);
 }
 button:active {
-    transform: translateY(8px);
+    transform: translateY(6px);
     box-shadow: 0 0px 0 var(--btn-shadow), 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* --- GAME AREA & HUD --- */
-#game-area { 
-    width: 100%; height: 100%; position: relative; overflow: hidden; cursor: crosshair; 
+/* --- HUD (top bar) --- */
+#game-area {
+    width: 100%; height: 100%; position: relative; overflow: hidden; cursor: crosshair;
     perspective: 1200px;
     transform-style: preserve-3d;
     z-index: 5;
 }
 #hud {
     position: absolute; top: 0; left: 0; width: 100%;
-    display: flex; justify-content: flex-start; align-items: center; 
-    z-index: 10; pointer-events: auto; /* Dovoľuje klikať a hoverovať menúčko! */
-    padding: 10px 20px; box-sizing: border-box;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%);
+    display: flex; align-items: center;
+    flex-wrap: wrap;
+    z-index: 10; pointer-events: auto;
+    padding: clamp(6px, 1.5vh, 12px) clamp(8px, 2vw, 20px);
+    box-sizing: border-box;
+    gap: 6px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%);
     transition: all 0.5s;
 }
 body.zombie-theme #hud {
-    background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+    background: linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%);
 }
 
 .score-card, .level-card, .lives-card {
-    background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);
-    padding: 10px 25px; border-radius: 30px; font-size: 1.5rem;
-    font-weight: 900; color: #00838f; border: 3px solid white;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-right: 15px;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(5px);
+    padding: clamp(5px, 1.5vh, 10px) clamp(10px, 2.5vw, 22px);
+    border-radius: 30px;
+    font-size: clamp(0.75rem, 2.5vw, 1.4rem);
+    font-weight: 900; color: #00838f; border: 2px solid white;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+    white-space: nowrap;
 }
 body.zombie-theme .score-card, body.zombie-theme .level-card {
     background: #34495e; color: #ecf0f1; border-color: #2c3e50;
@@ -172,37 +195,64 @@ body.zombie-theme .score-card, body.zombie-theme .level-card {
 .lives-card { color: #d32f2f; background: rgba(255, 235, 238, 0.95); border-color: #ffcdd2; }
 body.zombie-theme .lives-card { background: #4a2323; border-color: #f44336; color: #ff8a80; }
 
-/* --- IN-GAME ENTITIES (SVG instead of PNG) --- */
+.action-buttons {
+    margin-left: auto;
+    display: flex;
+    gap: clamp(5px, 1.5vw, 10px);
+    flex-shrink: 0;
+}
+.action-buttons button {
+    padding: clamp(5px, 1.5vh, 10px) clamp(10px, 2vw, 18px);
+    font-size: clamp(0.7rem, 2vw, 1.1rem);
+    box-shadow: none !important;
+    border-radius: 20px;
+    transform: none !important;
+}
+.action-buttons button:active {
+    opacity: 0.75;
+}
+
+/* --- IN-GAME ENTITIES --- */
 #player-penguin {
-    position: absolute; width: 80px; height: 80px;
+    position: absolute;
+    width: var(--penguin-size);
+    height: var(--penguin-size);
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     pointer-events: none; z-index: 3; transition: transform 0.05s linear;
 }
 .svg-penguin, .svg-fish {
     width: 100%; height: 100%;
 }
-
-/* Penguin in game filter */
-#player-penguin .svg-penguin { filter: drop-shadow(0px 8px 5px rgba(0,100,100,0.15)); }
+#player-penguin .svg-penguin { filter: drop-shadow(0px 6px 4px rgba(0,100,100,0.15)); }
 
 .fish {
-    position: absolute; width: 60px; height: 60px;
+    position: absolute;
+    width: var(--fish-size);
+    height: var(--fish-size);
     transform: translate(-50%, -50%);
     animation: bounce 1s ease-in-out infinite alternate;
     z-index: 2;
-    filter: drop-shadow(0px 6px 5px rgba(0,100,100,0.15));
+    filter: drop-shadow(0px 5px 4px rgba(0,100,100,0.15));
 }
-.fish.rare { filter: hue-rotate(150deg) drop-shadow(0px 6px 5px rgba(0,100,100,0.15)); width: 50px; height: 50px; }
-.fish.epic { filter: hue-rotate(250deg) drop-shadow(0px 6px 5px rgba(0,100,100,0.15)); width: 45px; height: 45px; }
-
-/* Despawn warning */
+.fish.rare {
+    filter: hue-rotate(150deg) drop-shadow(0px 5px 4px rgba(0,100,100,0.15));
+    width: calc(var(--fish-size) * 0.85);
+    height: calc(var(--fish-size) * 0.85);
+}
+.fish.epic {
+    filter: hue-rotate(250deg) drop-shadow(0px 5px 4px rgba(0,100,100,0.15));
+    width: calc(var(--fish-size) * 0.75);
+    height: calc(var(--fish-size) * 0.75);
+}
 .fish.fading { animation: blink 0.2s infinite; }
 @keyframes blink { 0% {opacity: 1;} 100% {opacity: 0.3;} }
 
 .snowball {
-    position: absolute; width: 70px; height: 70px;
+    position: absolute;
+    width: var(--snowball-size);
+    height: var(--snowball-size);
     background: radial-gradient(circle at 30% 30%, #fff 20%, #e0e0e0 80%);
-    border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 4;
+    border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 4;
 }
 .snowball.red {
     background: radial-gradient(circle at 30% 30%, #ff8a80 20%, #d32f2f 80%);
@@ -211,14 +261,13 @@ body.zombie-theme .lives-card { background: #4a2323; border-color: #f44336; colo
     background: transparent;
     box-shadow: none;
     border-radius: 0;
-    width: 90px; /* Zombíci sú väčšie postavy aby vynikli detaily */
-    height: 90px;
-    transform: translate(-50%, -50%) scale(1.2);
+    width: calc(var(--snowball-size) * 1.3);
+    height: calc(var(--snowball-size) * 1.3);
 }
 
 .explosion {
-    position: absolute; width: 80px; height: 80px; border-radius: 50%;
-    background-color: #ff9800; border: 5px solid #ff4d4d;
+    position: absolute; width: 70px; height: 70px; border-radius: 50%;
+    background-color: #ff9800; border: 4px solid #ff4d4d;
     transform: translate(-50%, -50%) scale(0.2);
     pointer-events: none; z-index: 50; animation: explodeAnim 0.4s ease-out forwards;
 }
@@ -227,54 +276,211 @@ body.zombie-theme .lives-card { background: #4a2323; border-color: #f44336; colo
     100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
 }
 
-/* --- KISSING & BLUE PENGUIN --- */
+/* --- BLUE PENGUIN & KISS --- */
 .blue-penguin-wrap {
-    position: absolute; width: 80px; height: 80px;
+    position: absolute;
+    width: var(--penguin-size);
+    height: var(--penguin-size);
     animation: bounce 1.2s ease-in-out infinite alternate; z-index: 3;
-    filter: drop-shadow(0px 8px 5px rgba(0,100,100,0.15));
+    filter: drop-shadow(0px 6px 4px rgba(0,100,100,0.15));
 }
-
 .kissing-animation {
     transition: all 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
-.kissing-rotate-left { 
-    /* Vystrelí používateľa hlboko do 3D pop-out a nakloní sa k modrému */
-    transform: translate(-50%, -50%) translateZ(400px) rotateY(20deg) rotateZ(15deg) !important; 
+.kissing-rotate-left {
+    transform: translate(-50%, -50%) translateZ(400px) rotateY(20deg) rotateZ(15deg) !important;
     filter: drop-shadow(20px 20px 20px rgba(0,0,0,0.3));
 }
-.kissing-rotate-right { 
-    /* Vystrelí modrého tučniaka von a nakloní sa vľavo */
-    transform: translate(-50%, -50%) translateZ(400px) rotateY(-20deg) rotateZ(-15deg) !important; 
+.kissing-rotate-right {
+    transform: translate(-50%, -50%) translateZ(400px) rotateY(-20deg) rotateZ(-15deg) !important;
     filter: drop-shadow(-20px 20px 20px rgba(0,0,0,0.3));
 }
 
 .kiss-heart {
-    position: absolute; font-size: 60px; pointer-events: none; z-index: 60;
+    position: absolute; font-size: clamp(35px, 8vmin, 60px);
+    pointer-events: none; z-index: 60;
     transform: translate(-50%, -50%) scale(0);
     animation: heartPop 1.5s ease-out forwards;
 }
 @keyframes heartPop {
-    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; filter: hue-rotate(0deg); }
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
     10% { transform: translate(-50%, -50%) scale(1.5); }
     80% { transform: translate(-50%, -100%) scale(1.5); opacity: 1; }
-    100% { transform: translate(-50%, -150%) scale(1); opacity: 0; filter: hue-rotate(45deg); }
+    100% { transform: translate(-50%, -150%) scale(1); opacity: 0; }
 }
 
-@keyframes bounce {
-    from { transform: translateY(0); }
-    to { transform: translateY(-10px); }
+/* --- MOBILE JOYSTICK --- */
+.mobile-only { display: none; }
+
+#joystick-zone {
+    position: absolute;
+    bottom: clamp(20px, 5vh, 50px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    pointer-events: auto;
+    touch-action: none;
+}
+#joystick-base {
+    width: clamp(100px, 25vmin, 140px);
+    height: clamp(100px, 25vmin, 140px);
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    border: 3px solid rgba(255,255,255,0.5);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+#joystick-knob {
+    width: clamp(40px, 10vmin, 55px);
+    height: clamp(40px, 10vmin, 55px);
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+    transition: transform 0.05s linear;
+    pointer-events: none;
+}
+body.zombie-theme #joystick-base {
+    background: rgba(30,50,30,0.4);
+    border-color: rgba(76,175,80,0.5);
+}
+body.zombie-theme #joystick-knob {
+    background: rgba(76,175,80,0.85);
 }
 
-/* OVERLAYS */
+/* --- OVERLAYS --- */
 .overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(255,255,255,0.7); backdrop-filter: blur(5px);
     display: flex; justify-content: center; align-items: center;
     z-index: 20; opacity: 1; transition: opacity 0.5s;
 }
-.overlay h2 { font-size: 4rem; color: #ff9800; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.overlay h2 {
+    font-size: clamp(2rem, 7vw, 4rem);
+    color: #ff9800;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
 .overlay.hidden { opacity: 0; pointer-events: none; }
 @keyframes popIn {
     0% { transform: scale(0.5); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- ANIMATIONS --- */
+@keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-8px); }
+}
+
+/* ========================================
+   RESPONSIVE BREAKPOINTS
+   ======================================== */
+
+/* Tablet / Small screens */
+@media (max-width: 768px) {
+    :root {
+        --penguin-size: clamp(45px, 10vmin, 70px);
+        --fish-size: clamp(38px, 9vmin, 60px);
+        --snowball-size: clamp(40px, 9.5vmin, 65px);
+    }
+
+    /* Show joystick on mobile */
+    .mobile-only { display: block; }
+    
+    /* Hide hover-pause hint on mobile (no hover on touch) */
+    #hud {
+        padding: 6px 10px;
+        gap: 5px;
+    }
+    
+    .score-card, .level-card, .lives-card {
+        padding: 5px 12px;
+    }
+    
+    .action-buttons button {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    /* Game area cursor — no crosshair on touch */
+    #game-area { cursor: default; }
+
+    /* Menu adjustments */
+    .menu-content, .game-over-content {
+        width: 90vw;
+        padding: 20px;
+    }
+}
+
+/* Small phones (portrait) */
+@media (max-width: 480px) {
+    :root {
+        --penguin-size: clamp(40px, 12vmin, 60px);
+        --fish-size: clamp(35px, 11vmin, 52px);
+        --snowball-size: clamp(38px, 12vmin, 58px);
+    }
+
+    h1 { font-size: clamp(1.3rem, 6vw, 2rem); }
+    h2 { font-size: clamp(1.1rem, 5vw, 1.6rem); }
+
+    .menu-content p { font-size: 0.8rem; }
+
+    /* Compact HUD – all inline */
+    #hud {
+        padding: 4px 8px;
+        gap: 4px;
+    }
+    .score-card, .level-card, .lives-card {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+        border-radius: 15px;
+    }
+    .action-buttons {
+        gap: 4px;
+    }
+    .action-buttons button {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+
+    /* Larger joystick for small phones */
+    #joystick-base {
+        width: 120px;
+        height: 120px;
+    }
+    #joystick-knob {
+        width: 46px;
+        height: 46px;
+    }
+}
+
+/* Landscape mode on phones */
+@media (max-width: 900px) and (orientation: landscape) {
+    :root {
+        --penguin-size: clamp(35px, 8vh, 55px);
+        --fish-size: clamp(30px, 7vh, 48px);
+        --snowball-size: clamp(32px, 8vh, 52px);
+    }
+    .menu-content, .game-over-content {
+        width: 70vw;
+        padding: 15px 25px;
+        max-height: 92vh;
+    }
+    h1 { font-size: clamp(1.1rem, 4vh, 2rem); }
+    h2 { font-size: clamp(1rem, 3.5vh, 1.8rem); }
+
+    #joystick-zone {
+        bottom: 12px;
+        left: 15%;
+        transform: none;
+    }
+    #joystick-base {
+        width: 100px;
+        height: 100px;
+    }
+    #joystick-knob {
+        width: 38px;
+        height: 38px;
+    }
 }

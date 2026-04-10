@@ -47,18 +47,95 @@ let gameState = {
     kissing: false // flag na zablokovanie pohybu pocas animacie
 };
 
-// Controls
-window.addEventListener('mousemove', (e) => {
-    gameState.mouseX = e.clientX;
-    gameState.mouseY = e.clientY;
-});
+// ---- DEVICE DETECTION ----
+const isMobile = () => ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-window.addEventListener('touchmove', (e) => {
-    if(e.touches.length > 0) {
-        gameState.mouseX = e.touches[0].clientX;
-        gameState.mouseY = e.touches[0].clientY;
+// ---- CONTROLS ----
+window.addEventListener('mousemove', (e) => {
+    if (!isMobile()) {
+        gameState.mouseX = e.clientX;
+        gameState.mouseY = e.clientY;
     }
 });
+
+// Prevent body scroll/zoom on touch
+document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+document.addEventListener('touchstart', (e) => {
+    // Only prevent default outside interactive elements
+    if (!e.target.closest('button')) e.preventDefault();
+}, { passive: false });
+
+// ---- JOYSTICK ----
+const joystickZone = document.getElementById('joystick-zone');
+const joystickBase = document.getElementById('joystick-base');
+const joystickKnob = document.getElementById('joystick-knob');
+
+let joystick = {
+    active: false,
+    startX: 0, startY: 0,
+    dx: 0, dy: 0,
+    maxRadius: 40
+};
+
+function initJoystick() {
+    const baseR = joystickBase.getBoundingClientRect().width / 2;
+    joystick.maxRadius = baseR * 0.55;
+}
+
+joystickZone.addEventListener('touchstart', (e) => {
+    if (!gameState.isRunning) return;
+    e.stopPropagation();
+    const touch = e.touches[0];
+    const rect = joystickBase.getBoundingClientRect();
+    joystick.active = true;
+    joystick.startX = rect.left + rect.width / 2;
+    joystick.startY = rect.top + rect.height / 2;
+}, { passive: true });
+
+joystickZone.addEventListener('touchmove', (e) => {
+    if (!joystick.active || !gameState.isRunning) return;
+    e.stopPropagation();
+    const touch = e.touches[0];
+    let dx = touch.clientX - joystick.startX;
+    let dy = touch.clientY - joystick.startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const capped = Math.min(dist, joystick.maxRadius);
+    if (dist > 0) { dx = dx / dist * capped; dy = dy / dist * capped; }
+    joystick.dx = dx;
+    joystick.dy = dy;
+    // Animate knob
+    joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    // Update virtual target for penguin
+    const speedMult = 3.5;
+    gameState.mouseX = gameState.penguinX + dx * speedMult;
+    gameState.mouseY = gameState.penguinY + dy * speedMult;
+}, { passive: true });
+
+function resetJoystick() {
+    joystick.active = false;
+    joystick.dx = 0; joystick.dy = 0;
+    joystickKnob.style.transform = 'translate(0, 0)';
+    // Stop penguin — snap target to current pos
+    gameState.mouseX = gameState.penguinX;
+    gameState.mouseY = gameState.penguinY;
+}
+joystickZone.addEventListener('touchend', resetJoystick, { passive: true });
+joystickZone.addEventListener('touchcancel', resetJoystick, { passive: true });
+
+// Tap anywhere on the game area to also move (fallback for non-joystick area)
+gameArea.addEventListener('touchstart', (e) => {
+    if (!gameState.isRunning || e.target.closest('#joystick-zone') || e.target.closest('#hud')) return;
+    const touch = e.touches[0];
+    gameState.mouseX = touch.clientX;
+    gameState.mouseY = touch.clientY;
+}, { passive: true });
+
+gameArea.addEventListener('touchmove', (e) => {
+    if (!gameState.isRunning || joystick.active || e.target.closest('#joystick-zone')) return;
+    const touch = e.touches[0];
+    gameState.mouseX = touch.clientX;
+    gameState.mouseY = touch.clientY;
+}, { passive: true });
 
 function switchScreen(screenName) {
     Object.values(screens).forEach(s => s.classList.remove('active'));
@@ -68,8 +145,9 @@ function switchScreen(screenName) {
 document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('restart-btn').addEventListener('click', startGame);
 
+// Hover pause only applies on desktop (no hover on touch)
 hudElement.addEventListener('mouseenter', () => {
-    if(gameState.isRunning) gameState.isHoverPaused = true;
+    if(gameState.isRunning && !isMobile()) gameState.isHoverPaused = true;
 });
 hudElement.addEventListener('mouseleave', () => {
     if(gameState.isRunning) gameState.isHoverPaused = false;
@@ -123,6 +201,8 @@ function startGame() {
     
     switchScreen('game');
     spawnFish();
+    // Init joystick radius after layout
+    setTimeout(initJoystick, 100);
     requestAnimationFrame(gameLoop);
 }
 
