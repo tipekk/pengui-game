@@ -63,13 +63,24 @@
         
         <!-- Game Screen -->
         <div id="game-screen" class="screen">
-            <div id="hud" class="top-nav-bar">
-                <div class="score-card">Skóre: <span id="score">0</span></div>
-                <div class="lives-card" style="margin: 0 10px;">❤️ <span id="lives">5</span></div>
-                <div class="level-card">Level: <span id="level">1</span></div>
-                <div class="action-buttons" style="margin-left: auto; display: flex; gap: 10px;">
-                    <button id="pause-btn" style="padding: 10px 20px; font-size: 1.2rem; box-shadow: none;">⏸ Pauza</button>
-                    <button id="zombie-btn" style="padding: 10px 20px; font-size: 1.2rem; background-color: #4caf50; box-shadow: none;">🧟 Zombíci (Vyp)</button>
+            <div id="hud">
+                <!-- LEFT bubble: Score + Level -->
+                <div class="hud-bubble hud-left">
+                    <span class="hud-icon">🐟</span><span id="score">0</span>
+                    <span class="hud-sep"></span>
+                    <span class="hud-icon">⭐</span><span id="level">1</span>
+                </div>
+
+                <!-- CENTER: Lives -->
+                <div class="hud-bubble hud-center">
+                    <span id="lives-hearts">❤️❤️❤️❤️❤️</span>
+                </div>
+
+                <!-- RIGHT bubble: Action buttons -->
+                <div class="hud-bubble hud-right">
+                    <button id="pause-btn" class="hud-btn" title="Pauza">⏸</button>
+                    <div class="hud-divider"></div>
+                    <button id="zombie-btn" class="hud-btn zombie-off" title="Zombie mód">🧟</button>
                 </div>
             </div>
             
@@ -116,18 +127,29 @@
                         <div id="joystick-knob"></div>
                     </div>
                 </div>
+
+                <!-- Zombie Shoot Button -->
+                <button id="shoot-btn" title="Strieľaj!">🔫</button>
+
+                <!-- Weapon cooldown bar -->
+                <div id="weapon-bar"><div id="weapon-bar-fill"></div></div>
             </div>
         </div>
         
         <!-- Game Over Screen -->
         <div id="game-over-screen" class="screen">
             <div class="game-over-content">
-                <h2>Hra skončila!</h2>
+                <h2 id="game-over-title">Hra skončila!</h2>
                 <div class="stats-box">
                     <div class="stat-item"><span>Ulovené ryby</span><span id="stat-caught" class="strong">0</span></div>
-                    <div class="stat-item"><span>Ujdené ryby</span><span id="stat-missed" class="strong">0</span></div>
+                    <div class="stat-item"><span>Ujdené</span><span id="stat-missed" class="strong">0</span></div>
                     <div class="stat-item"><span>Čas v hre</span><span class="strong"><span id="stat-time">0</span>s</span></div>
                     <div class="stat-item highlight"><span>Celkové Skóre</span><span id="final-score" class="strong">0</span></div>
+                </div>
+                <!-- Leaderboard -->
+                <div class="leaderboard-box">
+                    <h3>🏆 Top 5 Skóre</h3>
+                    <ol id="leaderboard-list"></ol>
                 </div>
                 <button id="restart-btn">Hrať Znova</button>
             </div>
