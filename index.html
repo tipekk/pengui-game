@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tučniačik na Ľade</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Background Layer with Ice Floes -->
+        <div id="bg-layer">
+            <div class="ice-floe flex-1"></div>
+            <div class="ice-floe flex-2"></div>
+            <div class="ice-floe flex-3"></div>
+            <div class="ice-floe flex-4"></div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="screen active">
+            <div class="menu-content">
+                <div class="menu-icon">
+                    <svg viewBox="0 0 100 100" class="svg-penguin hero-svg" style="--skin-color: #FFCA28;">
+                        <ellipse cx="30" cy="90" rx="15" ry="8" fill="#FF9800"/>
+                        <ellipse cx="70" cy="90" rx="15" ry="8" fill="#FF9800"/>
+                        <ellipse cx="50" cy="55" rx="40" ry="45" fill="var(--skin-color)"/>
+                        <ellipse cx="50" cy="65" rx="30" ry="30" fill="#FFF"/>
+                        <ellipse cx="10" cy="60" rx="10" ry="25" fill="var(--skin-color)" transform="rotate(20 10 60)"/>
+                        <ellipse cx="90" cy="60" rx="10" ry="25" fill="var(--skin-color)" transform="rotate(-20 90 60)"/>
+                        <circle cx="35" cy="40" r="5" fill="#000"/>
+                        <circle cx="65" cy="40" r="5" fill="#000"/>
+                        <path d="M 45,48 L 55,48 L 50,55 Z" fill="#FF9800"/>
+                    </svg>
+                </div>
+                <h1>Tučniačik na Ľade</h1>
+                <p>Zbieraj rybičky, vyhni sa snehu a stretni modrého kamoša!</p>
+                <button id="start-btn">Spustiť Hru!</button>
+            </div>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div id="hud" class="top-nav-bar">
+                <div class="score-card">Skóre: <span id="score">0</span></div>
+                <div class="lives-card" style="margin: 0 10px;">❤️ <span id="lives">5</span></div>
+                <div class="level-card">Level: <span id="level">1</span></div>
+                <div class="action-buttons" style="margin-left: auto; display: flex; gap: 10px;">
+                    <button id="pause-btn" style="padding: 10px 20px; font-size: 1.2rem; box-shadow: none;">⏸ Pauza</button>
+                    <button id="zombie-btn" style="padding: 10px 20px; font-size: 1.2rem; background-color: #4caf50; box-shadow: none;">🧟 Zombíci (Vyp)</button>
+                </div>
+            </div>
+            
+            <div id="game-area">
+                <div id="player-penguin">
+                    <svg viewBox="0 0 100 100" class="svg-penguin" style="--skin-color: #FFCA28;">
+                        <ellipse cx="30" cy="90" rx="15" ry="8" fill="#FF9800"/>
+                        <ellipse cx="70" cy="90" rx="15" ry="8" fill="#FF9800"/>
+                        <ellipse cx="50" cy="55" rx="40" ry="45" fill="var(--skin-color)"/>
+                        <ellipse cx="50" cy="65" rx="30" ry="30" fill="#FFF"/>
+                        <ellipse cx="10" cy="60" rx="10" ry="25" fill="var(--skin-color)" transform="rotate(20 10 60)"/>
+                        <ellipse cx="90" cy="60" rx="10" ry="25" fill="var(--skin-color)" transform="rotate(-20 90 60)"/>
+                        <circle cx="35" cy="40" r="5" fill="#000"/>
+                        <circle cx="65" cy="40" r="5" fill="#000"/>
+                        <circle cx="37" cy="38" r="2" fill="#fff"/> <!-- Sparkle voči -->
+                        <circle cx="67" cy="38" r="2" fill="#fff"/>
+                        <path d="M 45,46 L 55,46 L 50,52 Z" fill="#FF9800"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen">
+            <div class="game-over-content">
+                <h2>Hra skončila!</h2>
+                <div class="stats-box">
+                    <div class="stat-item"><span>Ulovené ryby</span><span id="stat-caught" class="strong">0</span></div>
+                    <div class="stat-item"><span>Ujdené ryby</span><span id="stat-missed" class="strong">0</span></div>
+                    <div class="stat-item"><span>Čas v hre</span><span class="strong"><span id="stat-time">0</span>s</span></div>
+                    <div class="stat-item highlight"><span>Celkové Skóre</span><span id="final-score" class="strong">0</span></div>
+                </div>
+                <button id="restart-btn">Hrať Znova</button>
+            </div>
+        </div>
+        
+        <!-- Level Up Overlay -->
+        <div id="level-up-overlay" class="overlay hidden">
+            <h2>Výborne! Ďalší Level!</h2>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
