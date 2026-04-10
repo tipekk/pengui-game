@@ -2,29 +2,82 @@
 //  TUČNIAČIK NA ĽADE  —  script.js
 // ============================================================
 
+// ============================================================
+//  FIREBASE CONFIG (online shared leaderboard)
+//  Voliteľné — vyplň z Firebase Console > Project Settings
+//  Pre nastavenie: https://firebase.google.com/
+//  Pravidlá DB nastav na { ".read": true, ".write": true }
+// ============================================================
+const FIREBASE_CONFIG = null;
+/* Príklad:
+const FIREBASE_CONFIG = {
+    apiKey:            "AIza...",
+    authDomain:        "tvojprojekt.firebaseapp.com",
+    databaseURL:       "https://tvojprojekt-default-rtdb.firebaseio.com",
+    projectId:         "tvojprojekt",
+    storageBucket:     "tvojprojekt.appspot.com",
+    messagingSenderId: "123456789",
+    appId:             "1:123:web:abc"
+};
+*/
+
+let firebaseDB = null;
+
+function initFirebase() {
+    if (!FIREBASE_CONFIG || typeof firebase === 'undefined') return;
+    try {
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        firebaseDB = firebase.database();
+        console.log('🔥 Firebase online leaderboard aktívny!');
+    } catch (e) {
+        console.warn('Firebase nedostupný, používam lokálny leaderboard.', e);
+    }
+}
+initFirebase();
+
 // --- DOM REFERENCES ---
 const screens = {
     menu:     document.getElementById('main-menu'),
     game:     document.getElementById('game-screen'),
     gameOver: document.getElementById('game-over-screen')
 };
-const penguinWrap   = document.getElementById('player-penguin');
-const gameArea      = document.getElementById('game-area');
-const hudElement    = document.getElementById('hud');
-const scoreEl       = document.getElementById('score');
-const levelEl       = document.getElementById('level');
-const livesHeartsEl = document.getElementById('lives-hearts');
-const statCaughtEl  = document.getElementById('stat-caught');
-const statMissedEl  = document.getElementById('stat-missed');
-const statTimeEl    = document.getElementById('stat-time');
-const finalScoreEl  = document.getElementById('final-score');
-const levelUpOverlay= document.getElementById('level-up-overlay');
-const leaderboardList = document.getElementById('leaderboard-list');
-const gameOverTitle = document.getElementById('game-over-title');
-const pauseBtn      = document.getElementById('pause-btn');
-const zombieBtn     = document.getElementById('zombie-btn');
-const shootBtn      = document.getElementById('shoot-btn');
-const weaponBarFill = document.getElementById('weapon-bar-fill');
+const penguinWrap    = document.getElementById('player-penguin');
+const gameArea       = document.getElementById('game-area');
+const hudElement     = document.getElementById('hud');
+const scoreEl        = document.getElementById('score');
+const levelEl        = document.getElementById('level');
+const livesHeartsEl  = document.getElementById('lives-hearts');
+const statCaughtEl   = document.getElementById('stat-caught');
+const statMissedEl   = document.getElementById('stat-missed');
+const statTimeEl     = document.getElementById('stat-time');
+const finalScoreEl   = document.getElementById('final-score');
+const levelUpOverlay = document.getElementById('level-up-overlay');
+const leaderboardEl  = document.getElementById('leaderboard-list');
+const gameOverTitle  = document.getElementById('game-over-title');
+const pauseBtn       = document.getElementById('pause-btn');
+const zombieBtn      = document.getElementById('zombie-btn');
+const shootBtn       = document.getElementById('shoot-btn');
+const weaponBarFill  = document.getElementById('weapon-bar-fill');
+const nameInput      = document.getElementById('player-name-input');
+
+// ============================================================
+//  PLAYER NAME  —  persists in localStorage
+// ============================================================
+const NAME_KEY = 'tucniak_player_name';
+
+function getPlayerName() {
+    return localStorage.getItem(NAME_KEY) || '';
+}
+function savePlayerName(name) {
+    localStorage.setItem(NAME_KEY, name.trim());
+}
+
+// Pre-fill name input from localStorage
+nameInput.value = getPlayerName();
+// Save on every keystroke
+nameInput.addEventListener('input', () => savePlayerName(nameInput.value));
+// Prevent game area hover-pause while typing
+nameInput.addEventListener('focus', () => { gameState.isHoverPaused = false; });
 
 // ============================================================
 //  WEB AUDIO ENGINE
@@ -39,7 +92,7 @@ function getAudio() {
 
 function playTone(freq, type, duration, vol = 0.3, startFreq = null) {
     try {
-        const ctx = getAudio();
+        const ctx  = getAudio();
         const osc  = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain); gain.connect(ctx.destination);
@@ -49,7 +102,7 @@ function playTone(freq, type, duration, vol = 0.3, startFreq = null) {
         gain.gain.setValueAtTime(vol, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
         osc.start(); osc.stop(ctx.currentTime + duration);
-    } catch(e) {}
+    } catch (e) {}
 }
 
 function playNoise(duration, vol = 0.15) {
@@ -58,28 +111,34 @@ function playNoise(duration, vol = 0.15) {
         const bufLen = ctx.sampleRate * duration;
         const buf    = ctx.createBuffer(1, bufLen, ctx.sampleRate);
         const data   = buf.getChannelData(0);
-        for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+        for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
         const src  = ctx.createBufferSource();
         const gain = ctx.createGain();
-        src.buffer  = buf;
+        src.buffer = buf;
         src.connect(gain); gain.connect(ctx.destination);
         gain.gain.setValueAtTime(vol, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
         src.start(); src.stop(ctx.currentTime + duration);
-    } catch(e) {}
+    } catch (e) {}
 }
 
 const SFX = {
-    fish:    () => { playTone(880, 'sine', 0.12, 0.25); playTone(1200, 'sine', 0.09, 0.15); },
-    rare:    () => { playTone(660, 'sine', 0.15, 0.25); playTone(990, 'sine', 0.12, 0.2); playTone(1320,'sine',0.1,0.15); },
-    epic:    () => { [440,550,660,880].forEach((f,i) => setTimeout(() => playTone(f,'triangle',0.12,0.3), i*50)); },
-    hit:     () => { playNoise(0.18, 0.25); playTone(120, 'sawtooth', 0.15, 0.2); },
-    bigHit:  () => { playNoise(0.3, 0.4); playTone(80, 'sawtooth', 0.25, 0.3); },
-    levelUp: () => { [261,329,392,523].forEach((f,i) => setTimeout(() => playTone(f,'square',0.18,0.25), i*100)); },
-    kiss:    () => { playTone(523,'sine',0.3,0.2); playTone(659,'sine',0.25,0.2); setTimeout(()=>playTone(784,'sine',0.4,0.25),200); },
-    shoot:   () => { playNoise(0.06, 0.3); playTone(300, 'sawtooth', 0.06, 0.15, 600); },
-    zombieHit: () => { playTone(180,'sawtooth',0.2,0.3,400); playNoise(0.12,0.2); },
-    brain:   () => { playTone(440,'triangle',0.1,0.2); playTone(330,'sine',0.1,0.15); },
+    fish:    () => { playTone(880, 'sine', 0.12, 0.22); playTone(1200, 'sine', 0.09, 0.14); },
+    rare:    () => { [440, 660, 880].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.13, 0.25), i * 55)); },
+    epic:    () => { [440, 550, 660, 880, 1100].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.14, 0.28), i * 50)); },
+    hit:     () => { playNoise(0.18, 0.22); playTone(120, 'sawtooth', 0.14, 0.2); },
+    bigHit:  () => { playNoise(0.3, 0.38); playTone(80, 'sawtooth', 0.22, 0.3); },
+    levelUp: () => { [261, 329, 392, 523, 659].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.2, 0.22), i * 90)); },
+    // Romantic kiss — ascending melody + double smooch pop
+    kiss: () => {
+        [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.35, 0.2), i * 120));
+        setTimeout(() => { playNoise(0.07, 0.18); playTone(900, 'sine', 0.06, 0.12, 1400); }, 500);
+        setTimeout(() => { playNoise(0.07, 0.18); playTone(900, 'sine', 0.06, 0.12, 1400); }, 800);
+        setTimeout(() => { playTone(1047, 'sine', 0.5, 0.25); playTone(1319, 'sine', 0.4, 0.2); }, 1100);
+    },
+    shoot:     () => { playNoise(0.06, 0.28); playTone(300, 'sawtooth', 0.06, 0.14, 600); },
+    zombieHit: () => { playTone(180, 'sawtooth', 0.2, 0.28, 380); playNoise(0.1, 0.18); },
+    brain:     () => { playTone(440, 'triangle', 0.1, 0.18); playTone(330, 'sine', 0.1, 0.14); },
 };
 
 // ============================================================
@@ -87,6 +146,7 @@ const SFX = {
 // ============================================================
 let gameState = {
     isRunning: false, isManualPaused: false, isHoverPaused: false,
+    isLevelingUp: false,   // ← FIX: game waits during level-up
     zombieMode: false,
     score: 0, lives: 5, level: 1,
     mouseX: window.innerWidth / 2, mouseY: window.innerHeight / 2,
@@ -95,20 +155,19 @@ let gameState = {
     lastTime: 0, startTime: 0, timeScale: 1,
     stats: { caught: 0, missed: 0 },
     kissing: false,
-    weaponCooldown: 0,  // frames left before can shoot again
-    weaponMaxCooldown: 60,
+    weaponCooldown: 0, weaponMaxCooldown: 60,
 };
 
 // ============================================================
-//  DEVICE DETECTION & CONTROLS
+//  DEVICE & CONTROLS
 // ============================================================
 const isMobile = () => ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 window.addEventListener('mousemove', e => {
     if (!isMobile()) { gameState.mouseX = e.clientX; gameState.mouseY = e.clientY; }
 });
-document.addEventListener('touchmove',  e => e.preventDefault(), { passive: false });
-document.addEventListener('touchstart', e => { if (!e.target.closest('button')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove',  e => { if (!e.target.closest('input')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchstart', e => { if (!e.target.closest('button') && !e.target.closest('input')) e.preventDefault(); }, { passive: false });
 
 // --- JOYSTICK ---
 const joystickZone = document.getElementById('joystick-zone');
@@ -127,7 +186,7 @@ joystickZone.addEventListener('touchstart', e => {
     const rect = joystickBase.getBoundingClientRect();
     joystick.active = true;
     joystick.startX = rect.left + rect.width / 2;
-    joystick.startY = rect.top  + rect.height / 2;
+    joystick.startY = rect.top + rect.height / 2;
 }, { passive: true });
 
 joystickZone.addEventListener('touchmove', e => {
@@ -136,14 +195,13 @@ joystickZone.addEventListener('touchmove', e => {
     const touch = e.touches[0];
     let dx = touch.clientX - joystick.startX;
     let dy = touch.clientY - joystick.startY;
-    const dist   = Math.sqrt(dx*dx + dy*dy);
+    const dist   = Math.sqrt(dx * dx + dy * dy);
     const capped = Math.min(dist, joystick.maxRadius);
-    if (dist > 0) { dx = dx/dist*capped; dy = dy/dist*capped; }
+    if (dist > 0) { dx = (dx / dist) * capped; dy = (dy / dist) * capped; }
     joystick.dx = dx; joystick.dy = dy;
     joystickKnob.style.transform = `translate(${dx}px,${dy}px)`;
-    const m = 3.5;
-    gameState.mouseX = gameState.penguinX + dx * m;
-    gameState.mouseY = gameState.penguinY + dy * m;
+    gameState.mouseX = gameState.penguinX + dx * 3.5;
+    gameState.mouseY = gameState.penguinY + dy * 3.5;
 }, { passive: true });
 
 function resetJoystick() {
@@ -152,8 +210,8 @@ function resetJoystick() {
     gameState.mouseX = gameState.penguinX;
     gameState.mouseY = gameState.penguinY;
 }
-joystickZone.addEventListener('touchend',   resetJoystick, { passive: true });
-joystickZone.addEventListener('touchcancel',resetJoystick, { passive: true });
+joystickZone.addEventListener('touchend',    resetJoystick, { passive: true });
+joystickZone.addEventListener('touchcancel', resetJoystick, { passive: true });
 
 gameArea.addEventListener('touchstart', e => {
     if (!gameState.isRunning || e.target.closest('#joystick-zone') || e.target.closest('#hud') || e.target.closest('#shoot-btn')) return;
@@ -167,7 +225,7 @@ gameArea.addEventListener('touchmove', e => {
 }, { passive: true });
 
 // ============================================================
-//  HUD HELPERS
+//  HUD
 // ============================================================
 function switchScreen(name) {
     Object.values(screens).forEach(s => s.classList.remove('active'));
@@ -177,20 +235,19 @@ function switchScreen(name) {
 function updateHUD() {
     scoreEl.innerText = gameState.score;
     levelEl.innerText = gameState.level;
-    // Draw hearts
-    const max = 5;
-    const lives = Math.max(0, Math.min(gameState.lives, max));
-    livesHeartsEl.innerText = '❤️'.repeat(lives) + '🖤'.repeat(Math.max(0, max - lives));
+    const lives = Math.max(0, Math.min(gameState.lives, 5));
+    livesHeartsEl.innerText = '❤️'.repeat(lives) + '🖤'.repeat(Math.max(0, 5 - lives));
 }
 
-function isGamePaused() { return gameState.isManualPaused || gameState.isHoverPaused; }
+function isGamePaused() {
+    return gameState.isManualPaused || gameState.isHoverPaused || gameState.isLevelingUp;
+}
 
-// --- HOVER PAUSE (desktop only) ---
 hudElement.addEventListener('mouseenter', () => { if (gameState.isRunning && !isMobile()) gameState.isHoverPaused = true; });
 hudElement.addEventListener('mouseleave', () => { if (gameState.isRunning) gameState.isHoverPaused = false; });
 
 // ============================================================
-//  PAUSE BUTTON
+//  BUTTONS
 // ============================================================
 pauseBtn.addEventListener('click', () => {
     if (!gameState.isRunning) return;
@@ -199,93 +256,105 @@ pauseBtn.addEventListener('click', () => {
     pauseBtn.classList.toggle('paused', gameState.isManualPaused);
 });
 
-// ============================================================
-//  ZOMBIE MODE TOGGLE
-// ============================================================
 zombieBtn.addEventListener('click', () => {
     gameState.zombieMode = !gameState.zombieMode;
     const on = gameState.zombieMode;
     zombieBtn.classList.toggle('zombie-on', on);
-    if (on) {
-        document.body.classList.add('zombie-theme');
-        gameArea.classList.add('zombie-mode-active');
-        gameOverTitle.innerText = 'Zomrel si...';
-    } else {
-        document.body.classList.remove('zombie-theme');
-        gameArea.classList.remove('zombie-mode-active');
-        gameOverTitle.innerText = 'Hra skončila!';
-    }
+    document.body.classList.toggle('zombie-theme', on);
+    gameArea.classList.toggle('zombie-mode-active', on);
+    gameOverTitle.innerText = on ? 'Zomrel si... 🧟' : 'Hra skončila!';
 });
 
 // ============================================================
-//  WEAPON — SHOOT (Zombie mode)
+//  WEAPON
 // ============================================================
 function fireShotgun() {
-    if (!gameState.isRunning || !gameState.zombieMode || gameState.weaponCooldown > 0) return;
+    if (!gameState.isRunning || !gameState.zombieMode || gameState.weaponCooldown > 0 || isGamePaused()) return;
     SFX.shoot();
     gameState.weaponCooldown = gameState.weaponMaxCooldown;
-
-    // Spawn 3 bullets in a spread
-    const spreads = [-0.25, 0, 0.25];
     const angle = Math.atan2(gameState.mouseY - gameState.penguinY, gameState.mouseX - gameState.penguinX);
-
-    spreads.forEach(spread => {
+    [-0.28, 0, 0.28].forEach(spread => {
         const a = angle + spread;
-        const speed = 12;
         const bullet = document.createElement('div');
         bullet.className = 'bullet';
         bullet.style.left = `${gameState.penguinX}px`;
         bullet.style.top  = `${gameState.penguinY}px`;
         bullet.style.transform = `translate(-50%,-50%) rotate(${a}rad)`;
         gameArea.appendChild(bullet);
-        gameState.bullets.push({
-            el: bullet, x: gameState.penguinX, y: gameState.penguinY,
-            vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-            life: 60
-        });
+        gameState.bullets.push({ el: bullet, x: gameState.penguinX, y: gameState.penguinY, vx: Math.cos(a) * 13, vy: Math.sin(a) * 13, life: 55 });
     });
 }
 
 shootBtn.addEventListener('click', fireShotgun);
 shootBtn.addEventListener('touchstart', e => { e.stopPropagation(); fireShotgun(); }, { passive: true });
-
-// Click to shoot on desktop in zombie mode
 gameArea.addEventListener('click', () => { if (gameState.zombieMode) fireShotgun(); });
 
 // ============================================================
-//  LEADERBOARD (localStorage)
+//  LEADERBOARD  (Firebase online, fallback to localStorage)
 // ============================================================
-const LB_KEY = 'tucniak_leaderboard';
+const LB_KEY = 'tucniak_scores';
 
-function getLeaderboard() {
-    try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; }
-    catch { return []; }
+function getLocalScores() {
+    try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; } catch { return []; }
+}
+function saveLocalScores(arr) {
+    localStorage.setItem(LB_KEY, JSON.stringify(arr));
 }
 
-function saveLeaderboard(lb) {
-    localStorage.setItem(LB_KEY, JSON.stringify(lb));
-}
+function submitScore(name, score, mode) {
+    const entry = {
+        name: name || 'Anonym',
+        score,
+        mode: mode ? '🧟' : '🐟',
+        date: new Date().toLocaleDateString('sk-SK')
+    };
 
-function addToLeaderboard(score) {
-    const lb = getLeaderboard();
-    lb.push({ score, date: new Date().toLocaleDateString('sk-SK') });
-    lb.sort((a, b) => b.score - a.score);
-    lb.splice(5); // keep top 5
-    saveLeaderboard(lb);
-    return lb;
+    // Always save locally too
+    const local = getLocalScores();
+    local.push(entry);
+    local.sort((a, b) => b.score - a.score);
+    local.splice(10);
+    saveLocalScores(local);
+
+    // Push to Firebase if available
+    if (firebaseDB) {
+        firebaseDB.ref('scores').push({
+            ...entry,
+            timestamp: Date.now()
+        }).catch(err => console.warn('Firebase write error:', err));
+    }
 }
 
 function renderLeaderboard(currentScore) {
-    const lb = addToLeaderboard(currentScore);
-    leaderboardList.innerHTML = '';
-    const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-    lb.forEach((entry, i) => {
-        const li = document.createElement('li');
-        const isNew = i === 0 && entry.score === currentScore;
-        li.innerHTML = `${medals[i] || (i+1+'.')} <strong>${entry.score}</strong> bodov  <small>${entry.date}</small>`;
-        if (isNew) { li.classList.add('new-record'); }
-        leaderboardList.appendChild(li);
-    });
+    const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+
+    function render(entries) {
+        leaderboardEl.innerHTML = '';
+        entries.slice(0, 5).forEach((e, i) => {
+            const li = document.createElement('li');
+            const isNew = e.score === currentScore && i === 0;
+            const modeTag = e.mode || '';
+            li.innerHTML = `${medals[i] || (i + 1 + '.')} <strong>${e.name}</strong> — ${e.score} b ${modeTag} <small>${e.date || ''}</small>`;
+            if (isNew) li.classList.add('new-record');
+            leaderboardEl.appendChild(li);
+        });
+    }
+
+    if (firebaseDB) {
+        // Load online scores — sorted descending
+        firebaseDB.ref('scores')
+            .orderByChild('score')
+            .limitToLast(50)
+            .once('value', snap => {
+                const all = [];
+                snap.forEach(c => all.push(c.val()));
+                all.sort((a, b) => b.score - a.score);
+                render(all.slice(0, 5));
+            })
+            .catch(() => render(getLocalScores())); // fallback
+    } else {
+        render(getLocalScores());
+    }
 }
 
 // ============================================================
@@ -294,14 +363,12 @@ function renderLeaderboard(currentScore) {
 function spawnRipple() {
     const r = document.createElement('div');
     r.className = 'water-ripple';
-    // Place on visible water (avoid ice floes area)
-    r.style.left = `${15 + Math.random() * 70}vw`;
-    r.style.top  = `${20 + Math.random() * 60}vh`;
+    r.style.left = `${10 + Math.random() * 80}vw`;
+    r.style.top  = `${15 + Math.random() * 70}vh`;
     document.getElementById('bg-layer').appendChild(r);
     setTimeout(() => r.remove(), 3000);
 }
-// Spawn ripples every 1.5s
-setInterval(spawnRipple, 1500);
+setInterval(spawnRipple, 1800);
 
 // ============================================================
 //  SVG GENERATORS
@@ -318,50 +385,71 @@ function getFishSVG(colorBody, colorTail) {
 }
 
 function getBrainSVG() {
-    return `<svg viewBox="0 0 100 100" class="svg-fish" style="filter:drop-shadow(0 5px 5px rgba(0,0,0,.35));">
-        <path d="M20,60 C10,40 30,10 50,30 C70,10 90,40 80,60 C90,80 70,100 50,80 C30,100 10,80 20,60 Z" fill="#F48FB1"/>
-        <path d="M50,15 L50,90" stroke="#C2185B" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <path d="M25,40 Q40,30 50,45 Q25,60 25,40" stroke="#C2185B" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M75,40 Q60,30 50,45 Q75,60 75,40" stroke="#C2185B" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M30,70 Q45,80 50,65 Q30,60 30,70" stroke="#C2185B" stroke-width="2" fill="none"/>
-        <path d="M70,70 Q55,80 50,65 Q70,60 70,70" stroke="#C2185B" stroke-width="2" fill="none"/>
-        <g class="blood-drips">
-            <path d="M 50,80 Q 48,110 50,115 Q 52,110 50,80" fill="#B71C1C"/>
-            <circle cx="50" cy="118" r="3" fill="#B71C1C"/>
-            <path d="M 30,70 Q 28,95 30,100 Q 32,95 30,70" fill="#B71C1C"/>
-            <circle cx="30" cy="104" r="2.5" fill="#B71C1C"/>
-            <path d="M 75,60 Q 73,85 75,90 Q 77,85 75,60" fill="#B71C1C"/>
-            <circle cx="40" cy="85" r="4" fill="#B71C1C"/>
-            <circle cx="65" cy="80" r="3.5" fill="#B71C1C"/>
-        </g>
+    return `<svg viewBox="0 0 100 120" class="svg-fish" style="filter:drop-shadow(0 4px 6px rgba(0,0,0,.4));">
+        <path d="M20,60 C10,40 30,10 50,30 C70,10 90,40 80,60 C90,80 70,100 50,80 C30,100 10,80 20,60 Z" fill="#F06292"/>
+        <path d="M50,15 L50,88" stroke="#C2185B" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M25,40 Q40,28 50,44 Q25,58 25,40" stroke="#C2185B" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M75,40 Q60,28 50,44 Q75,58 75,40" stroke="#C2185B" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M28,68 Q44,80 50,64 Q28,60 28,68" stroke="#C2185B" stroke-width="2.5" fill="none"/>
+        <path d="M72,68 Q56,80 50,64 Q72,60 72,68" stroke="#C2185B" stroke-width="2.5" fill="none"/>
+        <path d="M 50,80 Q 48,105 50,112 Q 52,105 50,80" fill="#B71C1C"/>
+        <circle cx="50" cy="115" r="4" fill="#B71C1C"/>
+        <path d="M 28,68 Q 26,90 28,96 Q 30,90 28,68" fill="#B71C1C"/>
+        <circle cx="28" cy="100" r="3" fill="#B71C1C"/>
+        <path d="M 75,58 Q 73,80 75,86 Q 77,80 75,58" fill="#B71C1C"/>
+        <circle cx="42" cy="88" r="5" fill="#B71C1C" opacity="0.85"/>
+        <circle cx="66" cy="83" r="4" fill="#B71C1C" opacity="0.8"/>
+        <circle cx="55" cy="95" r="3" fill="#B71C1C" opacity="0.9"/>
     </svg>`;
 }
 
 function getZombieSVG(isElite = false) {
-    const headColor = isElite ? '#7B1FA2' : '#388E3C';
-    const bodyColor = isElite ? '#4A148C' : '#2E7D32';
-    const eyeColor  = isElite ? '#E040FB' : '#ff4d4d';
-    return `<svg viewBox="0 0 100 100" class="svg-fish">
-        <path d="M 15,100 C 15,60 85,60 85,100 Z" fill="${bodyColor}"/>
-        <path d="M 10,100 C 25,45 75,45 90,100 Z" fill="#4E342E" opacity="0.8"/>
-        <path d="M 20,100 L 25,80 L 35,100 M 70,100 L 75,85 L 85,100" fill="#1a252c"/>
-        <path d="M 15,65 Q 40,55 50,75 Q 80,60 85,65" stroke="#3E2723" stroke-width="4" stroke-dasharray="8 6" fill="none"/>
-        <ellipse cx="50" cy="40" rx="30" ry="35" fill="${headColor}"/>
-        <path d="M 35,62 C 40,80 60,80 65,62 Z" fill="#1B5E20"/>
-        <path d="M 38,62 L 42,70 L 46,62 M 54,62 L 58,70 L 62,62" stroke="#FFF" stroke-width="3" fill="none" stroke-linejoin="miter"/>
-        <circle cx="35" cy="35" r="10" fill="#000"/>
-        <circle cx="65" cy="35" r="10" fill="#000"/>
-        <circle cx="35" cy="35" r="4" fill="${eyeColor}"/>
-        <circle cx="65" cy="35" r="4" fill="${eyeColor}"/>
-        ${isElite ? '<path d="M 35,18 L 50,8 L 65,18" stroke="#E040FB" stroke-width="3" fill="none"/>' : ''}
-        <path d="M 55,10 C 65,5 75,20 65,25 C 55,20 50,15 55,10 Z" fill="#F48FB1"/>
-        <path d="M 30,20 L 45,30 M 35,15 L 40,35" stroke="#B71C1C" stroke-width="3"/>
-        <path d="M 10,75 Q -5,55 10,45" stroke="${headColor}" stroke-width="12" stroke-linecap="round" fill="none"/>
-        <path d="M 90,75 Q 105,55 90,45" stroke="${headColor}" stroke-width="12" stroke-linecap="round" fill="none"/>
+    const skinC = isElite ? '#6A1B9A' : '#2E7D32';
+    const bodyC = isElite ? '#4A148C' : '#1B5E20';
+    const eyeC  = isElite ? '#CE93D8' : '#EF9A9A';
+    const glowC = isElite ? '#E040FB' : '#ff4d4d';
+    return `<svg viewBox="0 0 80 100" class="svg-fish">
+        <!-- Hunched body (smaller, more menacing silhouette) -->
+        <path d="M 10,100 C 12,65 68,65 70,100 Z" fill="${bodyC}"/>
+        <!-- Torn dark cloak -->
+        <path d="M 8,100 C 20,50 60,50 72,100 Z" fill="#1a1a2e" opacity="0.85"/>
+        <path d="M 16,100 L 20,80 L 28,100" fill="#0d0d1a"/>
+        <path d="M 55,100 L 60,82 L 67,100" fill="#0d0d1a"/>
+        <!-- Belt of skulls -->
+        <path d="M 15,68 Q 40,58 65,68" stroke="#37474F" stroke-width="5" fill="none"/>
+        <circle cx="30" cy="64" r="4" fill="#CFD8DC"/>
+        <circle cx="40" cy="61" r="4" fill="#CFD8DC"/>
+        <circle cx="50" cy="63" r="4" fill="#CFD8DC"/>
+        <!-- Head (tilted menacingly) -->
+        <ellipse cx="40" cy="38" rx="23" ry="28" fill="${skinC}" transform="rotate(-4 40 38)"/>
+        <!-- Exposed brain on top -->
+        <path d="M 45,12 C 54,7 63,18 55,23 C 46,18 41,14 45,12 Z" fill="#F06292"/>
+        <path d="M 45,12 C 54,7 63,18 55,23" stroke="#B71C1C" stroke-width="2" fill="none"/>
+        <!-- Gaping jagged mouth -->
+        <path d="M 28,58 C 32,72 48,72 52,58 Z" fill="#0a0a0a"/>
+        <path d="M 30,58 L 33,66 L 37,58 M 43,58 L 46,67 L 50,58" stroke="ivory" stroke-width="2.5" fill="none" stroke-linejoin="miter"/>
+        <!-- Dripping from mouth -->
+        <path d="M 40,72 Q 38,84 40,90 Q 42,84 40,72" fill="#33691E" opacity="0.8"/>
+        <!-- Hollow terrifying eyes -->
+        <circle cx="30" cy="33" r="9" fill="#000"/>
+        <circle cx="50" cy="33" r="9" fill="#000"/>
+        <circle cx="30" cy="33" r="5" fill="${eyeC}" opacity="0.85"/>
+        <circle cx="50" cy="33" r="5" fill="${eyeC}" opacity="0.85"/>
+        <circle cx="30" cy="33" r="2" fill="${glowC}"/>
+        <circle cx="50" cy="33" r="2" fill="${glowC}"/>
+        ${isElite ? '<path d="M 28,22 L 40,14 L 52,22" stroke="#CE93D8" stroke-width="2.5" fill="none"/>' : ''}
+        <!-- Stitches on face -->
+        <path d="M 24,24 L 34,30 M 26,18 L 30,36" stroke="#B71C1C" stroke-width="2.5"/>
+        <!-- Outstretched rotting arms -->
+        <path d="M 8,72 Q -8,52 8,40" stroke="${skinC}" stroke-width="10" stroke-linecap="round" fill="none"/>
+        <path d="M 72,72 Q 88,52 72,40" stroke="${skinC}" stroke-width="10" stroke-linecap="round" fill="none"/>
+        <!-- Clawed finger tips -->
+        <path d="M 8,40 L 2,34 M 8,40 L 4,30" stroke="${skinC}" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 72,40 L 78,34 M 72,40 L 76,30" stroke="${skinC}" stroke-width="3" stroke-linecap="round"/>
     </svg>`;
 }
 
-// Blue penguin SVG (with zombie gear slot)
+// Blue penguin SVG with zombie-mode gear
 const pSVG = `<svg viewBox="0 0 100 100" class="svg-penguin" style="--skin-color:#03A9F4;">
 <ellipse cx="30" cy="90" rx="15" ry="8" fill="#FF9800"/>
 <ellipse cx="70" cy="90" rx="15" ry="8" fill="#FF9800"/>
@@ -397,28 +485,30 @@ document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('restart-btn').addEventListener('click', startGame);
 
 function startGame() {
-    gameState.score   = 0;
-    gameState.lives   = 5;
-    gameState.level   = 1;
-    gameState.stats.caught = 0;
-    gameState.stats.missed = 0;
+    // Unlock audio on first interaction
+    try { if (!audioCtx) audioCtx = new AudioCtx(); audioCtx.resume(); } catch(e) {}
+
+    const name = nameInput.value.trim() || 'Anonym';
+    savePlayerName(name);
+
+    gameState.score  = 0; gameState.lives = 5; gameState.level = 1;
+    gameState.stats.caught = 0; gameState.stats.missed = 0;
     gameState.startTime = Date.now();
-    gameState.isRunning = true;
-    gameState.isManualPaused  = false;
-    gameState.isHoverPaused   = false;
-    gameState.timeScale = 1;
-    gameState.kissing  = false;
+    gameState.isRunning  = true;
+    gameState.isManualPaused = false; gameState.isHoverPaused = false;
+    gameState.isLevelingUp   = false;
+    gameState.timeScale = 1; gameState.kissing = false;
     gameState.weaponCooldown = 0;
+
     pauseBtn.innerText = '⏸';
     pauseBtn.classList.remove('paused');
-    penguinWrap.classList.remove('kissing-animation','kissing-rotate-left');
+    penguinWrap.classList.remove('kissing-animation', 'kissing-rotate-left');
 
     document.querySelectorAll('.fish,.snowball,.explosion,.zombie-explosion,.blue-penguin-wrap,.kiss-heart,.bullet')
         .forEach(el => el.remove());
-    gameState.fishes       = [];
-    gameState.snowballs    = [];
-    gameState.bluePenguins = [];
-    gameState.bullets      = [];
+
+    gameState.fishes = []; gameState.snowballs = [];
+    gameState.bluePenguins = []; gameState.bullets = [];
 
     updateHUD();
     switchScreen('game');
@@ -434,6 +524,8 @@ function endGame() {
     statMissedEl.innerText = gameState.stats.missed;
     statTimeEl.innerText   = timeSpent;
     finalScoreEl.innerText = gameState.score;
+    const name = nameInput.value.trim() || 'Anonym';
+    submitScore(name, gameState.score, gameState.zombieMode);
     renderLeaderboard(gameState.score);
     switchScreen('gameOver');
 }
@@ -454,7 +546,7 @@ function spawnKissHeart(x, y) {
     h.className = 'kiss-heart'; h.innerText = '💙';
     h.style.left = `${x}px`; h.style.top = `${y}px`;
     gameArea.appendChild(h);
-    setTimeout(() => h.remove(), 1500);
+    setTimeout(() => h.remove(), 2000);
 }
 
 // ============================================================
@@ -464,8 +556,7 @@ function spawnFish() {
     if (!gameState.isRunning) return;
     const div = document.createElement('div');
     div.className = 'fish';
-    let points = 1;
-    let colorBody = '#FFC107', colorTail = '#FFA000';
+    let points = 1, colorBody = '#FFC107', colorTail = '#FFA000';
 
     if (gameState.level >= 2 && Math.random() < 0.2) {
         div.classList.add('rare'); points = 2;
@@ -475,11 +566,7 @@ function spawnFish() {
         colorBody = '#AB47BC'; colorTail = '#7B1FA2';
     }
 
-    if (gameState.zombieMode) {
-        div.innerHTML = getBrainSVG();
-    } else {
-        div.innerHTML = getFishSVG(colorBody, colorTail);
-    }
+    div.innerHTML = gameState.zombieMode ? getBrainSVG() : getFishSVG(colorBody, colorTail);
 
     const pad = 90;
     const x = pad + Math.random() * (window.innerWidth  - pad * 2);
@@ -498,8 +585,8 @@ function spawnBluePenguin() {
     const y = Math.random() < 0.5 ? 50 : window.innerHeight - 50;
     div.style.left = `${x}px`; div.style.top = `${y}px`;
     gameArea.appendChild(div);
-    const angle = Math.atan2(window.innerHeight/2 - y, window.innerWidth/2 - x);
-    gameState.bluePenguins.push({ el: div, x, y, vx: Math.cos(angle)*1.5, vy: Math.sin(angle)*1.5 });
+    const angle = Math.atan2(window.innerHeight / 2 - y, window.innerWidth / 2 - x);
+    gameState.bluePenguins.push({ el: div, x, y, vx: Math.cos(angle) * 1.5, vy: Math.sin(angle) * 1.5 });
 }
 
 function spawnSnowball() {
@@ -535,7 +622,7 @@ function spawnSnowball() {
         vy = (Math.random() - 0.5) * 4 * m;
     }
     gameArea.appendChild(div);
-    gameState.snowballs.push({ el: div, x: x + size/2, y: y + size/2, vx, vy, damage, isElite });
+    gameState.snowballs.push({ el: div, x: x + size / 2, y: y + size / 2, vx, vy, damage, isElite });
 }
 
 // ============================================================
@@ -545,12 +632,11 @@ function checkCollisions() {
     if (gameState.kissing) return;
     const penR = 28;
 
-    // Fish
+    // Fish / Brains
     for (let i = gameState.fishes.length - 1; i >= 0; i--) {
         const f  = gameState.fishes[i];
-        const dx = gameState.penguinX - f.x;
-        const dy = gameState.penguinY - f.y;
-        if (Math.sqrt(dx*dx + dy*dy) < penR + 22) {
+        const dx = gameState.penguinX - f.x, dy = gameState.penguinY - f.y;
+        if (Math.sqrt(dx * dx + dy * dy) < penR + 22) {
             f.el.remove(); gameState.fishes.splice(i, 1);
             gameState.score += f.points; gameState.stats.caught++;
             if (f.points === 3) SFX.epic();
@@ -561,12 +647,11 @@ function checkCollisions() {
         }
     }
 
-    // Snowballs / Zombies
+    // Snowballs / Zombie enemies
     for (let i = gameState.snowballs.length - 1; i >= 0; i--) {
         const sb = gameState.snowballs[i];
-        const dx = gameState.penguinX - sb.x;
-        const dy = gameState.penguinY - sb.y;
-        if (Math.sqrt(dx*dx + dy*dy) < penR + 26) {
+        const dx = gameState.penguinX - sb.x, dy = gameState.penguinY - sb.y;
+        if (Math.sqrt(dx * dx + dy * dy) < penR + 24) {
             createExplosion(sb.x, sb.y, gameState.zombieMode);
             sb.damage === 3 ? SFX.bigHit() : SFX.hit();
             gameState.lives -= sb.damage;
@@ -579,7 +664,7 @@ function checkCollisions() {
         }
     }
 
-    // Bullets vs Zombies
+    // Bullets vs Zombie enemies
     if (gameState.zombieMode) {
         for (let bi = gameState.bullets.length - 1; bi >= 0; bi--) {
             const b = gameState.bullets[bi];
@@ -587,60 +672,69 @@ function checkCollisions() {
             for (let si = gameState.snowballs.length - 1; si >= 0; si--) {
                 const sb = gameState.snowballs[si];
                 const dx = b.x - sb.x, dy = b.y - sb.y;
-                if (Math.sqrt(dx*dx + dy*dy) < 30) {
+                if (Math.sqrt(dx * dx + dy * dy) < 32) {
                     SFX.zombieHit();
                     createExplosion(sb.x, sb.y, true);
                     gameState.score += sb.isElite ? 2 : 1;
                     sb.el.remove(); gameState.snowballs.splice(si, 1);
-                    updateHUD();
-                    hit = true; break;
+                    updateHUD(); hit = true; break;
                 }
             }
             if (hit) { b.el.remove(); gameState.bullets.splice(bi, 1); }
         }
     }
 
-    // Blue penguin kiss
+    // Blue penguin → KISS! 💙
     for (let i = gameState.bluePenguins.length - 1; i >= 0; i--) {
         const bp = gameState.bluePenguins[i];
-        const dx = gameState.penguinX - bp.x;
-        const dy = gameState.penguinY - bp.y;
-        if (Math.sqrt(dx*dx + dy*dy) < penR + 30) {
+        const dx = gameState.penguinX - bp.x, dy = gameState.penguinY - bp.y;
+        if (Math.sqrt(dx * dx + dy * dy) < penR + 30) {
             gameState.kissing = true;
-            gameState.timeScale = 0.05;
+            gameState.timeScale = 0.03;   // ← deeper slow-mo
             SFX.kiss();
-            const cx = window.innerWidth/2, cy = window.innerHeight/2;
-            penguinWrap.classList.add('kissing-animation','kissing-rotate-left');
-            penguinWrap.style.left = `${cx - 50}px`;
+            const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+
+            penguinWrap.classList.add('kissing-animation', 'kissing-rotate-left');
+            penguinWrap.style.left = `${cx - 55}px`;
             penguinWrap.style.top  = `${cy}px`;
-            bp.el.classList.add('kissing-animation','kissing-rotate-right');
-            bp.el.style.left = `${cx + 50}px`;
+
+            bp.el.classList.add('kissing-animation', 'kissing-rotate-right');
+            bp.el.style.left = `${cx + 55}px`;
             bp.el.style.top  = `${cy}px`;
-            setTimeout(() => spawnKissHeart(cx, cy - 80), 800);
+
+            // Spawn several hearts over time
+            setTimeout(() => spawnKissHeart(cx,      cy - 90), 700);
+            setTimeout(() => spawnKissHeart(cx - 30, cy - 120), 1300);
+            setTimeout(() => spawnKissHeart(cx + 30, cy - 100), 1800);
+
             gameState.lives += 3; updateHUD();
+
             setTimeout(() => {
                 bp.el.remove(); gameState.bluePenguins.splice(i, 1);
                 gameState.kissing = false;
-                penguinWrap.classList.remove('kissing-animation','kissing-rotate-left');
+                penguinWrap.classList.remove('kissing-animation', 'kissing-rotate-left');
                 gameState.timeScale = 1;
-            }, 2500);
+            }, 3800);   // ← 3.8s instead of 2.5s
         }
     }
 }
 
 // ============================================================
-//  LEVEL UP
+//  LEVEL UP  —  game fully pauses during overlay
 // ============================================================
 function levelUp() {
     gameState.level++;
+    gameState.isLevelingUp = true;   // ← PAUSE GAME
     SFX.levelUp();
-    levelUpOverlay.querySelector('h2').innerText = `Level ${gameState.level}! 🎉`;
+    levelUpOverlay.querySelector('h2').innerText = `⭐ Level ${gameState.level}! ⭐`;
     levelUpOverlay.classList.remove('hidden');
+
     setTimeout(() => {
         levelUpOverlay.classList.add('hidden');
+        gameState.isLevelingUp = false;  // ← RESUME GAME
         spawnFish();
         if (gameState.level > 1) spawnSnowball();
-    }, 1500);
+    }, 2000);
 }
 
 // ============================================================
@@ -684,7 +778,7 @@ function gameLoop(timestamp) {
         sb.x += sb.vx * ts; sb.y += sb.vy * ts;
         sb.el.style.left = `${sb.x - 35}px`;
         sb.el.style.top  = `${sb.y - 35}px`;
-        if (sb.x < -250 || sb.x > window.innerWidth+250 || sb.y < -250 || sb.y > window.innerHeight+250) {
+        if (sb.x < -280 || sb.x > window.innerWidth + 280 || sb.y < -280 || sb.y > window.innerHeight + 280) {
             sb.el.remove(); gameState.snowballs.splice(i, 1);
         }
     }
@@ -694,7 +788,7 @@ function gameLoop(timestamp) {
         const b = gameState.bullets[i];
         b.x += b.vx; b.y += b.vy; b.life--;
         b.el.style.left = `${b.x}px`; b.el.style.top = `${b.y}px`;
-        if (b.life <= 0 || b.x < 0 || b.x > window.innerWidth || b.y < 0 || b.y > window.innerHeight) {
+        if (b.life <= 0 || b.x < -50 || b.x > window.innerWidth + 50 || b.y < -50 || b.y > window.innerHeight + 50) {
             b.el.remove(); gameState.bullets.splice(i, 1);
         }
     }
@@ -707,11 +801,13 @@ function gameLoop(timestamp) {
         bp.el.style.left = `${bp.x - 40}px`; bp.el.style.top = `${bp.y - 40}px`;
     }
 
-    // --- Weapon cooldown ---
+    // --- Weapon cooldown bar ---
     if (gameState.weaponCooldown > 0) {
         gameState.weaponCooldown -= ts;
-        const pct = Math.max(0, 1 - gameState.weaponCooldown / gameState.weaponMaxCooldown);
-        if (weaponBarFill) weaponBarFill.style.transform = `scaleX(${pct})`;
+        if (weaponBarFill) {
+            const pct = Math.max(0, 1 - gameState.weaponCooldown / gameState.weaponMaxCooldown);
+            weaponBarFill.style.transform = `scaleX(${pct})`;
+        }
     }
 
     // --- Spawn logic ---

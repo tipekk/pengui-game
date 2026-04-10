@@ -8,6 +8,9 @@
     <title>Tučniačik na Ľade</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDK (optional: fill config in script.js to enable online leaderboard) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
 <body>
     <div id="app">
@@ -56,6 +59,11 @@
                     </svg>
                 </div>
                 <h1>Tučniačik na Ľade</h1>
+                <!-- Player name input -->
+                <div class="name-input-wrap">
+                    <label for="player-name-input">Tvoje meno 🐧</label>
+                    <input type="text" id="player-name-input" maxlength="16" placeholder="Zadaj meno..." autocomplete="off" spellcheck="false"/>
+                </div>
                 <p>Zbieraj rybičky, vyhni sa snehu a stretni modrého kamoša!</p>
                 <button id="start-btn">Spustiť Hru!</button>
             </div>
