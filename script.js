@@ -3,37 +3,16 @@
 // ============================================================
 
 // ============================================================
-//  FIREBASE CONFIG (online shared leaderboard)
-//  Voliteľné — vyplň z Firebase Console > Project Settings
-//  Pre nastavenie: https://firebase.google.com/
-//  Pravidlá DB nastav na { ".read": true, ".write": true }
+//  GLOBAL LEADERBOARD (Dreamlo)
 // ============================================================
-const FIREBASE_CONFIG = null;
-/* Príklad:
-const FIREBASE_CONFIG = {
-    apiKey:            "AIza...",
-    authDomain:        "tvojprojekt.firebaseapp.com",
-    databaseURL:       "https://tvojprojekt-default-rtdb.firebaseio.com",
-    projectId:         "tvojprojekt",
-    storageBucket:     "tvojprojekt.appspot.com",
-    messagingSenderId: "123456789",
-    appId:             "1:123:web:abc"
-};
+const DREAMLO_PUBLIC  = "69da13168f40bc2f603e0bf6";
+const DREAMLO_PRIVATE = "duQVvUo7fEWriET-LT0Xkg7eOGdnv_QUmFUyfn9fkilw";
+const BASE_URL        = "https://www.dreamlo.com/lb/";
+
+/* 
+   Dreamlo je free služba pre globálne skóre. 
+   Dáta sú teraz zdieľané medzi všetkými hráčmi online.
 */
-
-let firebaseDB = null;
-
-function initFirebase() {
-    if (!FIREBASE_CONFIG || typeof firebase === 'undefined') return;
-    try {
-        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-        firebaseDB = firebase.database();
-        console.log('🔥 Firebase online leaderboard aktívny!');
-    } catch (e) {
-        console.warn('Firebase nedostupný, používam lokálny leaderboard.', e);
-    }
-}
-initFirebase();
 
 // --- DOM REFERENCES ---
 const screens = {
@@ -331,62 +310,53 @@ function saveLocalScores(arr) {
 }
 
 function submitScore(name, score, mode) {
-    const entry = {
-        name: name || 'Anonym',
-        score,
-        mode: mode ? '🧟' : '🐟',
-        date: new Date().toLocaleDateString('sk-SK')
-    };
+    const safeName  = encodeURIComponent(name || 'Anonym');
+    const modeStr   = mode ? 'zombie' : 'classic';
+    const timeSpent = Math.floor((Date.now() - gameState.startTime) / 1000);
 
-    // Always save locally too
+    // Save locally as backup
+    const entry = { name: name || 'Anonym', score, mode: mode ? '🧟' : '🐟', date: new Date().toLocaleDateString('sk-SK') };
     const local = getLocalScores();
     local.push(entry);
     local.sort((a, b) => b.score - a.score);
-    local.splice(10);
-    saveLocalScores(local);
+    saveLocalScores(local.slice(0, 10));
 
-    // Push to Firebase if available
-    if (firebaseDB) {
-        firebaseDB.ref('scores').push({
-            ...entry,
-            timestamp: Date.now()
-        }).catch(err => console.warn('Firebase write error:', err));
-    }
+    // PUSH TO GLOBAL DREAMLO
+    fetch(`${BASE_URL}${DREAMLO_PRIVATE}/add/${safeName}/${score}/${timeSpent}/${modeStr}`)
+        .then(() => console.log('✅ Skóre odoslané do globálneho rebríčka!'))
+        .catch(err => console.warn('Dreamlo Error:', err));
 }
 
 function renderLeaderboard(currentScore, isGlobal = false) {
     const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
     const targetEl = isGlobal ? globalLeaderboardEl : leaderboardEl;
 
-    function render(entries) {
+    function display(entries) {
         targetEl.innerHTML = '';
         entries.slice(0, 5).forEach((e, i) => {
             const li = document.createElement('li');
-            const isNew = currentScore !== null && e.score === currentScore && i === 0;
-            const modeTag = e.mode || '';
-            li.innerHTML = `${medals[i] || (i + 1 + '.')} <strong>${e.name}</strong> — ${e.score} b ${modeTag} <small>${e.date || ''}</small>`;
+            const isNew = currentScore !== null && Number(e.score) === currentScore && i === 0;
+            const modeIcon = e.text === 'zombie' ? '🧟' : '🐟';
+            li.innerHTML = `${medals[i] || (i + 1 + '.')} <strong>${e.name}</strong> — ${e.score} b ${modeIcon}`;
             if (isNew) li.classList.add('new-record');
             targetEl.appendChild(li);
         });
-        if (entries.length === 0) {
-            targetEl.innerHTML = '<li style="list-style:none;text-align:center;opacity:0.6;">Zatiaľ tu nikto nie je...</li>';
-        }
+        if (entries.length === 0) targetEl.innerHTML = '<li style="list-style:none;text-align:center;opacity:0.6;">Zatiaľ tu nikto nie je...</li>';
     }
 
-    if (firebaseDB) {
-        // Load online scores — sorted descending
-        firebaseDB.ref('scores')
-            .orderByChild('score')
-            .limitToLast(50)
-            .once('value', snap => {
-                const all = [];
-                snap.forEach(c => all.push(c.val()));
-                all.sort((a, b) => b.score - a.score);
-                render(all.slice(0, 5));
+    // FETCH FROM GLOBAL DREAMLO
+    if (isGlobal) {
+        targetEl.innerHTML = '<li style="list-style:none;text-align:center;">Načítavam...</li>';
+        fetch(`${BASE_URL}${DREAMLO_PUBLIC}/json`)
+            .then(res => res.json())
+            .then(data => {
+                let list = data.dreamlo.leaderboard.entry || [];
+                if (!Array.isArray(list)) list = [list]; // handle single record case
+                display(list);
             })
-            .catch(() => render(getLocalScores())); // fallback
+            .catch(() => display(getLocalScores()));
     } else {
-        render(getLocalScores());
+        display(getLocalScores());
     }
 }
 
