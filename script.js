@@ -60,6 +60,15 @@ const shootBtn       = document.getElementById('shoot-btn');
 const weaponBarFill  = document.getElementById('weapon-bar-fill');
 const nameInput      = document.getElementById('player-name-input');
 
+// --- MODALS ---
+const helpModal            = document.getElementById('help-modal');
+const helpBtn              = document.getElementById('help-btn');
+const closeHelpBtn         = document.getElementById('close-help-btn');
+const lbModal              = document.getElementById('leaderboard-modal');
+const lbBtn                = document.getElementById('leaderboard-btn');
+const closeLbBtn           = document.getElementById('close-leaderboard-btn');
+const globalLeaderboardEl  = document.getElementById('global-leaderboard-list');
+
 // ============================================================
 //  PLAYER NAME  —  persists in localStorage
 // ============================================================
@@ -146,7 +155,7 @@ const SFX = {
 // ============================================================
 let gameState = {
     isRunning: false, isManualPaused: false, isHoverPaused: false,
-    isLevelingUp: false,   // ← FIX: game waits during level-up
+    isLevelingUp: false, isModalOpen: false,   // ← Added isModalOpen
     zombieMode: false,
     score: 0, lives: 5, level: 1,
     mouseX: window.innerWidth / 2, mouseY: window.innerHeight / 2,
@@ -240,7 +249,7 @@ function updateHUD() {
 }
 
 function isGamePaused() {
-    return gameState.isManualPaused || gameState.isHoverPaused || gameState.isLevelingUp;
+    return gameState.isManualPaused || gameState.isHoverPaused || gameState.isLevelingUp || gameState.isModalOpen;
 }
 
 hudElement.addEventListener('mouseenter', () => { if (gameState.isRunning && !isMobile()) gameState.isHoverPaused = true; });
@@ -263,6 +272,26 @@ zombieBtn.addEventListener('click', () => {
     document.body.classList.toggle('zombie-theme', on);
     gameArea.classList.toggle('zombie-mode-active', on);
     gameOverTitle.innerText = on ? 'Zomrel si... 🧟' : 'Hra skončila!';
+});
+
+// --- MENU MODALS LOGIC ---
+helpBtn.addEventListener('click', () => {
+    helpModal.classList.remove('hidden');
+    gameState.isModalOpen = true;
+});
+closeHelpBtn.addEventListener('click', () => {
+    helpModal.classList.add('hidden');
+    gameState.isModalOpen = false;
+});
+
+lbBtn.addEventListener('click', () => {
+    renderLeaderboard(null, true); // true = render to global list
+    lbModal.classList.remove('hidden');
+    gameState.isModalOpen = true;
+});
+closeLbBtn.addEventListener('click', () => {
+    lbModal.classList.add('hidden');
+    gameState.isModalOpen = false;
 });
 
 // ============================================================
@@ -325,19 +354,23 @@ function submitScore(name, score, mode) {
     }
 }
 
-function renderLeaderboard(currentScore) {
+function renderLeaderboard(currentScore, isGlobal = false) {
     const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+    const targetEl = isGlobal ? globalLeaderboardEl : leaderboardEl;
 
     function render(entries) {
-        leaderboardEl.innerHTML = '';
+        targetEl.innerHTML = '';
         entries.slice(0, 5).forEach((e, i) => {
             const li = document.createElement('li');
-            const isNew = e.score === currentScore && i === 0;
+            const isNew = currentScore !== null && e.score === currentScore && i === 0;
             const modeTag = e.mode || '';
             li.innerHTML = `${medals[i] || (i + 1 + '.')} <strong>${e.name}</strong> — ${e.score} b ${modeTag} <small>${e.date || ''}</small>`;
             if (isNew) li.classList.add('new-record');
-            leaderboardEl.appendChild(li);
+            targetEl.appendChild(li);
         });
+        if (entries.length === 0) {
+            targetEl.innerHTML = '<li style="list-style:none;text-align:center;opacity:0.6;">Zatiaľ tu nikto nie je...</li>';
+        }
     }
 
     if (firebaseDB) {
@@ -408,7 +441,7 @@ function getZombieSVG(isElite = false) {
     const bodyC = isElite ? '#4A148C' : '#1B5E20';
     const eyeC  = isElite ? '#CE93D8' : '#EF9A9A';
     const glowC = isElite ? '#E040FB' : '#ff4d4d';
-    return `<svg viewBox="0 0 80 100" class="svg-fish">
+    return `<svg viewBox="-5 -5 90 110" class="svg-fish">
         <!-- Hunched body (smaller, more menacing silhouette) -->
         <path d="M 10,100 C 12,65 68,65 70,100 Z" fill="${bodyC}"/>
         <!-- Torn dark cloak -->
